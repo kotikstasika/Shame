@@ -7,9 +7,11 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.dimasik.shame.command.CommandExecutor;
 import org.dimasik.shame.command.impl.*;
 import org.dimasik.shame.config.Config;
+import org.dimasik.shame.database.DatabaseManager;
 import org.dimasik.shame.fakelags.listener.PacketListener;
 import org.dimasik.shame.fakelags.listener.PlayerListener;
 import org.dimasik.shame.fakelags.manager.TrollingManager;
+import org.dimasik.shame.modules.impl.AddModule;
 import org.dimasik.shame.modules.impl.BanModule;
 import org.dimasik.shame.modules.impl.DamageModule;
 
@@ -23,6 +25,8 @@ public final class Shame extends JavaPlugin {
     private CommandExecutor commandExecutor;
     @Getter
     private static Shame instance;
+    @Getter
+    private DatabaseManager databaseManager;
 
     @Override
     public void onEnable() {
@@ -31,6 +35,7 @@ public final class Shame extends JavaPlugin {
         setupCommand();
         setupFakeLags();
         setupModules();
+        setupDatabase();
     }
 
     private void setupConfig(){
@@ -52,6 +57,9 @@ public final class Shame extends JavaPlugin {
         new MixInv("mixinv").register();
         new Troll("troll").register();
         new DeleteChunk("deletechunk").register();
+        new Add("add").register();
+        new Get("get").register();
+        new BlockMovement("blockmovement").register();
     }
 
     private void setupFakeLags(){
@@ -63,8 +71,19 @@ public final class Shame extends JavaPlugin {
     }
 
     private void setupModules(){
+        new AddModule();
         new BanModule();
         new DamageModule();
+    }
+
+    private void setupDatabase(){
+        databaseManager = new DatabaseManager(
+                Config.getString("mysql.host", "localhost"),
+                Config.getString("mysql.database", "lite_shame"),
+                Config.getString("mysql.user", "root"),
+                Config.getString("mysql.password", "сайнес гпт кодер"),
+                Config.getInteger("mysql.port", 3306)
+        );
     }
 
     @Override

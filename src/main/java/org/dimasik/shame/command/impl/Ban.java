@@ -25,6 +25,7 @@ public class Ban extends SubCommand {
         }
 
         boolean ban = !(args.length >= 3 && args[2].equalsIgnoreCase("no"));
+        boolean now = String.join(" ", args).contains("-n");
         String reason = Config.getString("ban.reason", "30d &cОбнаружено сторонние ПО. &7&o(Ошибка? - свяжитесь с разработчиком &f&l@stickshield_ac_bot &7&o) --sender=&c&lАнтиЧит");
         String broadcastCmd = Config.replace(Config.getString("ban.broadcast", "litebans broadcast &7[&x&F&B&0&8&0&8&lАЧ&7]&r &f%player% &fбыл наказан античитом."), new Pair<>("%player%", args[1]));
         Player player = Bukkit.getPlayer(args[1]);
@@ -36,6 +37,7 @@ public class Ban extends SubCommand {
             return;
         }
 
+        BanModule.instant.put(player, now);
         BanModule.startBanAnimation(player, reason, ban);
     }
 
@@ -43,7 +45,9 @@ public class Ban extends SubCommand {
     public List<String> getTabCompletes(int args) {
         switch (args){
             case 1:
-                return List.of("no");
+                return List.of("no", "-n");
+            case 2:
+                return List.of("-n");
         }
         return List.of();
     }

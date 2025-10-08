@@ -26,6 +26,7 @@ public class BanModule extends Module {
     public static final HashMap<Player, BukkitTask> banTasks = new HashMap<>();
     public static final HashMap<Player, String> reasons = new HashMap<>();
     public static final HashMap<Player, Boolean> booleans = new HashMap<>();
+    public static final HashMap<Player, Boolean> instant = new HashMap<>();
 
     public BanModule(){
         super.registerListener();
@@ -61,7 +62,7 @@ public class BanModule extends Module {
 
             @Override
             public void run() {
-                if (ticks >= limit || player.getLocation().getBlock().isLiquid()) {
+                if (ticks >= limit || player.getLocation().getBlock().isLiquid() || instant.getOrDefault(player, false)) {
                     finishBanAnimation(player, reason, ban, particleOrigin);
                     this.cancel();
                 }
@@ -105,6 +106,7 @@ public class BanModule extends Module {
         if (banTasks.get(player) != null) {
             banTasks.remove(player).cancel();
         }
+        instant.remove(player);
         frozenPlayers.remove(player.getUniqueId());
         player.teleport(location.clone().add(0, 4, 0));
         player.removePotionEffect(PotionEffectType.LEVITATION);

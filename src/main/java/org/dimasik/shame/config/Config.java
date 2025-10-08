@@ -20,6 +20,14 @@ public class Config {
         return config.getString(path, def);
     }
 
+    public static Integer getInteger(String path){
+        return config.getInt(path);
+    }
+
+    public static int getInteger(String path, int def){
+        return config.getInt(path, def);
+    }
+
     public static List<String> getStringList(String path){
         return config.getStringList(path);
     }
