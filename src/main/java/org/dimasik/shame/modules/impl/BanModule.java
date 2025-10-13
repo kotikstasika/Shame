@@ -28,13 +28,13 @@ public class BanModule extends Module {
     public static final HashMap<Player, Boolean> booleans = new HashMap<>();
     public static final HashMap<Player, Boolean> instant = new HashMap<>();
 
-    public BanModule(){
+    public BanModule() {
         super.registerListener();
     }
 
     public static void startBanAnimation(Player player, String reason, Boolean ban) {
         UUID playerId = player.getUniqueId();
-        if(frozenPlayers.contains(playerId)){
+        if (frozenPlayers.contains(playerId)) {
             return;
         }
         frozenPlayers.add(playerId);
@@ -42,23 +42,47 @@ public class BanModule extends Module {
         booleans.put(player, ban);
         Location startLocation = player.getLocation().clone();
 
-        Color[] colors = {
-                Color.fromRGB(0xFB0808), Color.fromRGB(0xFB1608), Color.fromRGB(0xFB2408), Color.fromRGB(0xFB3208), Color.fromRGB(0xFB4108), Color.fromRGB(0xFB4F08), Color.fromRGB(0xFB5D08), Color.fromRGB(0xFB6B08),
-        };
+        Color[] colors = {Color.fromRGB(0xFF1A1A), Color.fromRGB(0xFF2620), Color.fromRGB(0xFF3326), Color.fromRGB(0xFF3F2C), Color.fromRGB(0xFF4C1A), Color.fromRGB(0xFF5910), Color.fromRGB(0xFF6610)};
 
         player.getWorld().playSound(player.getLocation(), Sound.BLOCK_BEACON_DEACTIVATE, 2f, 0.5f);
-        int limit = 100;
-        player.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, limit * 20, 1, false, false, false));
+        int limit = 120;
+        player.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, limit + 40, 1, false, false, false));
         player.setAllowFlight(false);
         player.setGliding(false);
+
         player.setFlying(false);
         player.setSwimming(false);
 
         BukkitTask bukkitTask = new BukkitRunnable() {
             public int ticks = 0;
-            double rotation = 0;
-            double tiltAngle = 0;
-            Location particleOrigin = startLocation.clone().subtract(0, 0, 0);
+            double baseRotation = 0;
+            double tiltYawDeg = 0;
+            final Location particleOrigin = startLocation.clone().add(0, Math.max(1.4, player.getEyeHeight() - 0.2), 0);
+            final Random random = new Random();
+            final int sparkCount = 12;
+            final double[] angleOffsets = new double[sparkCount];
+            final double[] angularSpeeds = new double[sparkCount];
+            final double[] radii = new double[sparkCount];
+            final double[] yOffsets = new double[sparkCount];
+            final double[] riseSpeeds = new double[sparkCount];
+            final double[] swayPhases = new double[sparkCount];
+            final double[] swayAmps = new double[sparkCount];
+            final double[] radialDrifts = new double[sparkCount];
+            final double[] radialDirs = new double[sparkCount];
+
+            {
+                for (int i = 0; i < sparkCount; i++) {
+                    angleOffsets[i] = (Math.PI * 2.0 / sparkCount) * i;
+                    angularSpeeds[i] = Math.toRadians(18) + Math.toRadians(random.nextGaussian() * 2.0);
+                    radii[i] = 1.25 + random.nextDouble() * 0.05;
+                    yOffsets[i] = -0.7 + random.nextDouble() * 0.2;
+                    riseSpeeds[i] = 0.01 + random.nextDouble() * 0.008;
+                    swayPhases[i] = random.nextDouble() * Math.PI * 2.0;
+                    swayAmps[i] = 0.015 + random.nextDouble() * 0.01;
+                    radialDrifts[i] = 0.001 + random.nextDouble() * 0.0015;
+                    radialDirs[i] = random.nextBoolean() ? 1.0 : -1.0;
+                }
+            }
 
             @Override
             public void run() {
@@ -69,33 +93,51 @@ public class BanModule extends Module {
                 player.setGliding(false);
                 player.setFlying(false);
                 player.setSwimming(false);
-                particleOrigin.add(0, 0.1, 0);
-                double radius = 1.5;
-                int particleCount = 12;
-                double angleIncrement = (2 * Math.PI) / particleCount;
-                for (int i = 0; i < particleCount; i++) {
-                    double angle = (i * angleIncrement + rotation) % (2 * Math.PI);
-                    double x = radius * Math.cos(angle);
-                    double z = radius * Math.sin(angle);
-                    Vector circlePoint = new Vector(x, 0, z);
-                    Vector rotatedPoint = rotateVectorAroundAxis(circlePoint, new Vector(1, 0, 0), Math.toRadians(40)).rotateAroundY(Math.toRadians(tiltAngle));
-                    Color color = colors[(i + ticks) % colors.length];
-                    player.getWorld().spawnParticle(Particle.REDSTONE, particleOrigin.clone().add(rotatedPoint), 1, 0, 0, 0, 0, new Particle.DustOptions(color, 1), true);
+
+                particleOrigin.add(0, 0.06, 0);
+
+                double tiltPitchRad = Math.toRadians(35);
+                double tiltYawRad = Math.toRadians(tiltYawDeg);
+
+                for (int i = 0; i < sparkCount; i++) {
+                    double angle = angleOffsets[i] + Math.toRadians(tiltYawDeg * 0.2) + baseRotation;
+                    double x = radii[i] * Math.cos(angle);
+                    double z = radii[i] * Math.sin(angle);
+                    Vector local = new Vector(x, 0, z);
+                    Vector tilted = rotateVectorAroundAxis(local, new Vector(1, 0, 0), tiltPitchRad).rotateAroundY(tiltYawRad);
+                    double swim = Math.sin((ticks * 0.15) + swayPhases[i]) * swayAmps[i];
+                    Vector swimVec = tilted.clone().crossProduct(new Vector(0, 1, 0)).normalize().multiply(swim);
+                    Vector pos = tilted.clone().add(swimVec);
+
+                    yOffsets[i] += riseSpeeds[i];
+                    int segments = 7;
+
+                    double phase = (ticks * (Math.PI * 2 / 20.0)) % (2 * Math.PI);
+                    double wobble = Math.sin((ticks * 0.10) + swayPhases[i]) * Math.toRadians(3);
+                    double pointAngle = (angle + wobble) % (2 * Math.PI);
+                    double delta = Math.abs(Math.atan2(Math.sin(pointAngle - phase), Math.cos(pointAngle - phase)));
+                    int colorIndex = (int) Math.round((double) (colors.length - 1) * (1.0 - (delta / Math.PI)));
+                    Color color = colors[Math.max(0, Math.min(colors.length - 1, colorIndex))];
+                    for (int s = 0; s < segments; s++) {
+                        if ((s % 2) == 1) continue;
+                        Vector segOffset = new Vector(0, yOffsets[i] + s * 0.14, 0);
+                        Location spawnLoc = particleOrigin.clone().add(pos).add(segOffset);
+                        player.getWorld().spawnParticle(Particle.REDSTONE, spawnLoc, 1, 0, 0, 0, 0, new Particle.DustOptions(color, 0.70f), true);
+                    }
+
+                    radii[i] += radialDrifts[i] * radialDirs[i];
+                    if (radii[i] > 1.5) {
+                        radii[i] = 1.5;
+                        radialDirs[i] = -1.0;
+                    }
+                    if (radii[i] < 1.0) {
+                        radii[i] = 1.0;
+                        radialDirs[i] = 1.0;
+                    }
                 }
-                for (int i = 0; i < particleCount; i++) {
-                    double angle = (i * angleIncrement + rotation) % (2 * Math.PI);
-                    double x = radius * Math.cos(angle);
-                    double z = radius * Math.sin(angle);
-                    Vector circlePoint = new Vector(x, 0, z);
-                    Vector rotatedPoint = rotateVectorAroundAxis(circlePoint, new Vector(1, 0, 0), Math.toRadians(-40)).rotateAroundY(Math.toRadians(tiltAngle));
-                    Color color = colors[(i + ticks) % colors.length];
-                    player.getWorld().spawnParticle(Particle.REDSTONE, particleOrigin.clone().add(rotatedPoint), 1, 0, 0, 0, 0, new Particle.DustOptions(color, 1), true);
-                }
 
-                rotation -= Math.toRadians(6);
-
-                tiltAngle -= 3;
-
+                baseRotation += Math.toRadians(1.6);
+                tiltYawDeg -= 1.2;
                 ticks++;
             }
         }.runTaskTimer(Shame.getInstance(), 0L, 1L);
@@ -121,28 +163,17 @@ public class BanModule extends Module {
         player.getWorld().spawnParticle(Particle.FLASH, player.getLocation().clone().add(2, -3, 0), 5, 0, 0, 0, 0, null, true);
         player.getWorld().spawnParticle(Particle.FLASH, player.getLocation().clone().add(-1, -3, 0), 5, 0, 0, 0, 0, null, true);
         player.getWorld().spawnParticle(Particle.FLASH, player.getLocation().clone().add(-2, -3, 0), 5, 0, 0, 0, 0, null, true);
-        player.setHealth(0);
 
         if (ban) {
             String broadcastCmd = Config.replace(Config.getString("ban.broadcast", "litebans broadcast &7[&x&F&B&0&8&0&8&lАЧ&7]&r &f%player% &fбыл наказан античитом."), new Pair<>("%player%", player.getName()));
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "banip " + player.getName() + " " + reason);
-            if(!broadcastCmd.isEmpty()) {
+            player.setHealth(0);
+            if (!broadcastCmd.isEmpty()) {
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), broadcastCmd);
             }
         }
     }
 
-    public static List<Location> getCircle(Location location, double radius, int points) {
-        List<Location> locations = new ArrayList<>();
-        double increment = 6.283185307179586D / points;
-        for (int i = 0; i < points; i++) {
-            double angle = i * increment;
-            double x = location.getX() + Math.cos(angle) * radius;
-            double z = location.getZ() + Math.sin(angle) * radius;
-            locations.add(new Location(location.getWorld(), x, location.getY(), z));
-        }
-        return locations;
-    }
 
     private static Vector rotateVectorAroundAxis(Vector vector, Vector axis, double angle) {
         double cos = Math.cos(angle);
@@ -151,9 +182,7 @@ public class BanModule extends Module {
 
         Vector cross = axis.getCrossProduct(vector);
 
-        return vector.clone().multiply(cos)
-                .add(cross.multiply(sin))
-                .add(axis.multiply(dot * (1 - cos)));
+        return vector.clone().multiply(cos).add(cross.multiply(sin)).add(axis.multiply(dot * (1 - cos)));
     }
 
     @EventHandler
@@ -167,9 +196,9 @@ public class BanModule extends Module {
 
     @EventHandler
     public void onMove(PlayerMoveEvent event) {
-        if(event.getPlayer() == null) return;
+        if (event.getPlayer() == null) return;
         if (frozenPlayers.contains(event.getPlayer().getUniqueId())) {
-            if(event.getTo().getX() != event.getFrom().getX() || event.getTo().getX() != event.getFrom().getX()) {
+            if (event.getTo().getX() != event.getFrom().getX() || event.getTo().getX() != event.getFrom().getX()) {
                 event.setCancelled(true);
             }
         }
@@ -177,15 +206,15 @@ public class BanModule extends Module {
 
     @EventHandler
     public void onCmd(PlayerCommandPreprocessEvent event) {
-        if(event.getPlayer() == null) return;
+        if (event.getPlayer() == null) return;
         if (frozenPlayers.contains(event.getPlayer().getUniqueId())) {
             event.setCancelled(true);
         }
     }
 
     @EventHandler
-    public void onCmd(PlayerTeleportEvent    event) {
-        if(event.getPlayer() == null) return;
+    public void onCmd(PlayerTeleportEvent event) {
+        if (event.getPlayer() == null) return;
         if (frozenPlayers.contains(event.getPlayer().getUniqueId())) {
             event.setCancelled(true);
         }
