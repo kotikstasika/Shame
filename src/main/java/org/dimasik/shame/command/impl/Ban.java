@@ -8,7 +8,6 @@ import org.dimasik.shame.command.SubCommand;
 import org.dimasik.shame.config.Config;
 import org.dimasik.shame.modules.impl.BanModule;
 import org.dimasik.shame.utils.Pair;
-import org.dimasik.shame.utils.Parser;
 
 import java.util.List;
 

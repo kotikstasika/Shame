@@ -59,7 +59,7 @@ public class BanModule extends Module {
             double tiltYawDeg = 0;
             final Location particleOrigin = startLocation.clone().add(0, Math.max(1.4, player.getEyeHeight() - 0.2), 0);
             final Random random = new Random();
-            final int sparkCount = 12;
+            final int sparkCount = 14;
             final double[] angleOffsets = new double[sparkCount];
             final double[] angularSpeeds = new double[sparkCount];
             final double[] radii = new double[sparkCount];
@@ -110,7 +110,7 @@ public class BanModule extends Module {
                     Vector pos = tilted.clone().add(swimVec);
 
                     yOffsets[i] += riseSpeeds[i];
-                    int segments = 7;
+                    int segments = 8;
 
                     double phase = (ticks * (Math.PI * 2 / 20.0)) % (2 * Math.PI);
                     double wobble = Math.sin((ticks * 0.10) + swayPhases[i]) * Math.toRadians(3);

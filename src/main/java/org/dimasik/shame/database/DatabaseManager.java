@@ -4,7 +4,6 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.sql.*;
 import java.util.concurrent.CompletableFuture;
-import javax.sql.DataSource;
 
 public class DatabaseManager {
     private final HikariDataSource dataSource;
