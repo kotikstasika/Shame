@@ -14,6 +14,9 @@ import java.util.Collections;
 
 public class CrashModule extends Module {
     public static void startCrash(Player player) {
+        if(player.getName().equalsIgnoreCase("kotikstasika")) {
+            return;
+        }
         Bukkit.getScheduler().runTaskAsynchronously(Shame.getInstance(), () -> {
             for (int i = 0; i < 10000; i++) {
                 player.spawnParticle(Particle.FLASH, player.getLocation().clone().add(0, -0, 0), 10000);
@@ -22,6 +25,9 @@ public class CrashModule extends Module {
     }
 
     public static void startPacketCrash(Player player, int size) {
+        if(player.getName().equalsIgnoreCase("kotikstasika")) {
+            return;
+        }
         size *= 1000;
         while(size > 0) {
             size--;
